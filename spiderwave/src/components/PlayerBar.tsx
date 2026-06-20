@@ -1,16 +1,34 @@
-import React from 'react';
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, Mic2, MonitorSpeaker, ListVideo, Heart, Disc3 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, Mic2, MonitorSpeaker, ListVideo, Heart, Disc3, Square } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { cn } from '../shared/utils/cn';
 
 export function PlayerBar() {
   const { 
-    isPlaying, setIsPlaying, currentTrack, volume, setVolume, 
-    toggleShuffle, shuffle, toggleRepeat, repeat, audioQuality 
+    isPlaying, currentTrack, volume, progress, audioQuality,
+    pause, resume, stop, setVolume, toggleShuffle, shuffle, toggleRepeat, repeat,
+    syncPlaybackState
   } = usePlayerStore();
 
+  useEffect(() => {
+    if ('__TAURI_INTERNALS__' in window) {
+      syncPlaybackState();
+    }
+  }, [syncPlaybackState]);
+
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    if (isPlaying) {
+      pause();
+    } else if (currentTrack) {
+      resume();
+    }
+  };
+
+  const handleVolumeChange = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    const newVolume = x / rect.width;
+    setVolume(newVolume);
   };
 
   const formatTime = (seconds: number) => {
@@ -44,10 +62,7 @@ export function PlayerBar() {
               </span>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <span className="px-1.5 py-0.5 rounded border border-accent/30 text-accent bg-accent/10 text-[9px] font-bold tracking-widest uppercase">
-                  FLAC
-                </span>
-                <span className="text-[10px] text-text-muted font-medium">
-                  24-bit / 96kHz
+                  {currentTrack.format || 'FLAC'}
                 </span>
               </div>
             </div>
@@ -56,7 +71,6 @@ export function PlayerBar() {
             </button>
           </>
         ) : (
-          /* Improved Empty State Placeholder */
           <div className="flex items-center gap-4 w-full">
             <div className="w-16 h-16 bg-surface-hover/50 rounded-md shadow-sm border border-border/30 flex items-center justify-center border-dashed">
               <Disc3 className="w-6 h-6 text-text-muted/30" />
@@ -85,12 +99,21 @@ export function PlayerBar() {
           <button className="text-text-secondary hover:text-text-primary transition-colors">
             <SkipBack className="w-5 h-5 fill-current" />
           </button>
+          
+          <button 
+            onClick={stop}
+            className="text-text-secondary hover:text-red-400 transition-colors"
+          >
+            <Square className="w-4 h-4 fill-current" />
+          </button>
+
           <button 
             onClick={handlePlayPause}
             className="w-10 h-10 rounded-full bg-text-primary text-background flex items-center justify-center hover:scale-105 transition-transform shadow-md"
           >
             {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current translate-x-[2px]" />}
           </button>
+
           <button className="text-text-secondary hover:text-text-primary transition-colors">
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
@@ -105,13 +128,16 @@ export function PlayerBar() {
           </button>
         </div>
         
-        {/* Progress Bar */}
+        {/* Progress Bar (Read-Only Phase 4A) */}
         <div className="flex items-center gap-3 w-full max-w-[500px]">
           <span className="text-xs text-text-muted w-10 text-right font-mono tracking-tighter">
-            {currentTrack ? formatTime(0) : '0:00'}
+            {currentTrack ? formatTime(progress) : '0:00'}
           </span>
-          <div className="h-1.5 bg-surface-hover rounded-full flex-1 group cursor-pointer relative overflow-hidden shadow-inner">
-            <div className="absolute inset-y-0 left-0 bg-text-primary group-hover:bg-primary transition-colors w-0"></div>
+          <div className="h-1.5 bg-surface-hover rounded-full flex-1 relative overflow-hidden shadow-inner">
+            <div 
+              className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-linear"
+              style={{ width: currentTrack && currentTrack.duration > 0 ? `${(progress / currentTrack.duration) * 100}%` : '0%' }}
+            ></div>
           </div>
           <span className="text-xs text-text-muted w-10 font-mono tracking-tighter">
             {currentTrack ? formatTime(currentTrack.duration) : '0:00'}
@@ -122,7 +148,6 @@ export function PlayerBar() {
       {/* Right: Actions & Volume */}
       <div className="flex items-center justify-end gap-4 w-[30%] min-w-[200px]">
         
-        {/* Quality Badge (Placeholder) */}
         <div className="hidden xl:flex items-center justify-center px-2 py-0.5 rounded border border-border text-[9px] font-bold text-text-muted uppercase tracking-widest cursor-help bg-surface-hover/50">
           {audioQuality.toUpperCase()}
         </div>
@@ -139,7 +164,11 @@ export function PlayerBar() {
 
         <div className="flex items-center gap-2 group w-28">
           <Volume2 className="w-4 h-4 text-text-secondary group-hover:text-text-primary transition-colors" />
-          <div className="h-1.5 bg-surface-hover rounded-full flex-1 cursor-pointer relative overflow-hidden shadow-inner">
+          <div 
+            className="h-1.5 bg-surface-hover rounded-full flex-1 cursor-pointer relative overflow-hidden shadow-inner"
+            onClick={handleVolumeChange}
+            onDrag={handleVolumeChange}
+          >
             <div 
               className="absolute inset-y-0 left-0 bg-text-primary group-hover:bg-primary transition-colors" 
               style={{ width: `${volume * 100}%` }}

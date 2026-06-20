@@ -9,7 +9,7 @@ interface TrackListProps {
 }
 
 export function TrackList({ tracks }: TrackListProps) {
-  const { currentTrack, setIsPlaying } = usePlayerStore();
+  const { currentTrack, playTrack } = usePlayerStore();
   const parentRef = useRef<HTMLDivElement>(null);
 
   const rowVirtualizer = useVirtualizer({
@@ -54,8 +54,7 @@ export function TrackList({ tracks }: TrackListProps) {
               }}
               className={`group flex items-center grid grid-cols-[48px_1fr_1fr_1fr_80px] gap-4 px-6 border-b border-border/30 hover:bg-surface-active cursor-pointer transition-colors ${isPlaying ? 'bg-surface-active text-primary' : 'text-text-secondary'}`}
               onClick={() => {
-                usePlayerStore.setState({ currentTrack: track });
-                setIsPlaying(true);
+                playTrack(track);
               }}
             >
               <div className="text-center flex items-center justify-center relative">
