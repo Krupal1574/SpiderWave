@@ -1,16 +1,13 @@
 export interface Track {
   id: string;
   title: string;
-  artistId: string;
-  artistName: string;
-  albumId: string;
-  albumName: string;
+  artist: string;
+  album: string;
   duration: number; // in seconds
-  url: string; // file path or stream url
-  trackNumber?: number;
-  discNumber?: number;
-  year?: number;
-  genre?: string;
+  track_number?: number;
+  path: string;
+  
+  // Extra UI fields that might be populated later
   albumArt?: string;
   bitrate?: number;
   sampleRate?: number;

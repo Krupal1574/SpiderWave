@@ -17,9 +17,10 @@ interface LibraryState {
   setAlbums: (albums: Album[]) => void;
   setArtists: (artists: Artist[]) => void;
   setPlaylists: (playlists: Playlist[]) => void;
-  setIsScanning: (isScanning: boolean) => void;
-  setScanProgress: (scanProgress: number) => void;
-  setLastScanAt: (timestamp: number | null) => void;
+  
+  startScan: () => void;
+  finishScan: (tracks: Track[]) => void;
+  clearLibrary: () => void;
 }
 
 export const useLibraryStore = create<LibraryState>((set) => ({
@@ -35,7 +36,17 @@ export const useLibraryStore = create<LibraryState>((set) => ({
   setAlbums: (albums) => set({ albums }),
   setArtists: (artists) => set({ artists }),
   setPlaylists: (playlists) => set({ playlists }),
-  setIsScanning: (isScanning) => set({ isScanning }),
-  setScanProgress: (scanProgress) => set({ scanProgress }),
-  setLastScanAt: (lastScanAt) => set({ lastScanAt }),
+  
+  startScan: () => set({ isScanning: true, scanProgress: 0 }),
+  finishScan: (tracks) => set({ 
+    isScanning: false, 
+    tracks, 
+    lastScanAt: Date.now() 
+  }),
+  clearLibrary: () => set({ 
+    tracks: [], 
+    albums: [], 
+    artists: [], 
+    lastScanAt: null 
+  }),
 }));

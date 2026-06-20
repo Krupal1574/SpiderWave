@@ -40,7 +40,7 @@ export function PlayerBar() {
                 {currentTrack.title}
               </span>
               <span className="text-xs text-text-secondary hover:underline cursor-pointer truncate mt-0.5">
-                {currentTrack.artistName}
+                {currentTrack.artist}
               </span>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <span className="px-1.5 py-0.5 rounded border border-accent/30 text-accent bg-accent/10 text-[9px] font-bold tracking-widest uppercase">
