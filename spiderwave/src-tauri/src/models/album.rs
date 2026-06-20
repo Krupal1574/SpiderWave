@@ -1,12 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Track {
+pub struct Album {
     pub id: String,
     pub title: String,
     pub artist: String,
-    pub album: String,
-    pub duration: u64,
-    pub track_number: Option<u32>,
-    pub path: String,
+    pub year: Option<u32>,
+    pub artwork_path: Option<String>,
 }

@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import React, { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Library as LibraryIcon, Loader2, FolderSearch, AlertCircle } from 'lucide-react';
 import { EmptyState } from '../shared/components/EmptyState';
 import { useLibraryStore } from '../store/useLibraryStore';
 import { TrackList } from '../components/TrackList';
-import { Track } from '../shared/types/track';
 
 export function Library() {
-  const { tracks, isScanning, startScan, finishScan } = useLibraryStore();
+  const { tracks, isScanning, isLoading, rescanLibrary, loadLibrary } = useLibraryStore();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if ('__TAURI_INTERNALS__' in window) {
+      loadLibrary();
+    }
+  }, []); // Run once on mount
 
   const handleScanClick = async () => {
     try {
@@ -17,9 +21,9 @@ export function Library() {
       
       if (!('__TAURI_INTERNALS__' in window)) {
         setError("SpiderWave is running in a web browser. Please run via 'npm run tauri dev' to access the native file system.");
-        finishScan([]);
         return;
       }
+      
       const selected = await open({
         directory: true,
         multiple: false,
@@ -27,17 +31,25 @@ export function Library() {
       });
 
       if (selected && typeof selected === 'string') {
-        startScan();
-        // Invoke Rust command
-        const scannedTracks: Track[] = await invoke('scan_music_library', { folderPath: selected });
-        finishScan(scannedTracks);
+        await rescanLibrary(selected);
       }
     } catch (err) {
       console.error('Scan failed:', err);
       setError(String(err));
-      finishScan([]); // reset scanning state
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
+        <div className="w-16 h-16 rounded-full bg-surface-hover flex items-center justify-center mb-6 shadow-sm border border-border/50">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </div>
+        <h3 className="text-xl font-bold text-text-primary mb-2">Loading Library...</h3>
+        <p className="text-text-secondary max-w-md">Reading tracks from database.</p>
+      </div>
+    );
+  }
 
   if (isScanning) {
     return (
@@ -46,7 +58,7 @@ export function Library() {
           <Loader2 className="w-8 h-8 text-primary animate-spin" />
         </div>
         <h3 className="text-xl font-bold text-text-primary mb-2">Scanning Library...</h3>
-        <p className="text-text-secondary max-w-md">Extracting metadata from your audio files. This may take a moment for large collections.</p>
+        <p className="text-text-secondary max-w-md">Extracting metadata and updating database. This may take a moment.</p>
       </div>
     );
   }

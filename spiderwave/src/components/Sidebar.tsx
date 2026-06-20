@@ -13,6 +13,7 @@ interface NavItemProps {
 }
 
 const NavItem = ({ to, icon, label, isCollapsed }: NavItemProps) => (
+
   <NavLink
     to={to}
     className={({ isActive }) =>
@@ -26,13 +27,16 @@ const NavItem = ({ to, icon, label, isCollapsed }: NavItemProps) => (
     }
     title={isCollapsed ? label : undefined}
   >
-    <div className={cn("flex items-center justify-center transition-transform group-hover:scale-110", isCollapsed && "scale-110")}>
-      {icon}
-    </div>
-    {!isCollapsed && <span className="truncate">{label}</span>}
-    {/* Active indicator line */}
-    {({ isActive }) => isActive && (
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
+    {({ isActive }) => (
+      <>
+        <div className={cn("flex items-center justify-center transition-transform group-hover:scale-110", isCollapsed && "scale-110")}>
+          {icon}
+        </div>
+        {!isCollapsed && <span className="truncate">{label}</span>}
+        {isActive && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
+        )}
+      </>
     )}
   </NavLink>
 );
