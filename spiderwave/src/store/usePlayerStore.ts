@@ -46,20 +46,42 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     return { repeat: nextMode };
   }),
   playNext: () => set((state) => {
-    if (!state.currentTrack || state.queue.length === 0) return state;
-    const currentIndex = state.queue.findIndex(t => t.id === state.currentTrack?.id);
-    if (currentIndex === -1 || currentIndex === state.queue.length - 1) {
-       if (state.repeat === 'all') {
-         return { currentTrack: state.queue[0], isPlaying: true, progress: 0 };
-       }
-       return state; // end of queue
+    if (state.queue.length === 0) return state;
+    
+    // Determine the next index
+    let nextIndex = state.queueIndex + 1;
+    if (nextIndex >= state.queue.length) {
+      if (state.repeat === 'all') {
+        nextIndex = 0;
+      } else {
+        return state; // End of queue, do nothing
+      }
     }
-    return { currentTrack: state.queue[currentIndex + 1], isPlaying: true, progress: 0 };
+    
+    return { 
+      currentTrack: state.queue[nextIndex], 
+      queueIndex: nextIndex,
+      isPlaying: true, 
+      progress: 0 
+    };
   }),
   playPrevious: () => set((state) => {
-    if (!state.currentTrack || state.queue.length === 0) return state;
-    const currentIndex = state.queue.findIndex(t => t.id === state.currentTrack?.id);
-    if (currentIndex <= 0) return state;
-    return { currentTrack: state.queue[currentIndex - 1], isPlaying: true, progress: 0 };
+    if (state.queue.length === 0) return state;
+    
+    let prevIndex = state.queueIndex - 1;
+    if (prevIndex < 0) {
+      if (state.repeat === 'all') {
+        prevIndex = state.queue.length - 1;
+      } else {
+        prevIndex = 0; // Just restart current track if at beginning
+      }
+    }
+    
+    return { 
+      currentTrack: state.queue[prevIndex], 
+      queueIndex: prevIndex,
+      isPlaying: true, 
+      progress: 0 
+    };
   }),
 }));

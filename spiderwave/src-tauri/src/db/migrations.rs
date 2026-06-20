@@ -62,6 +62,10 @@ pub fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {
             key TEXT PRIMARY KEY,
             value TEXT
         );
+
+        CREATE INDEX IF NOT EXISTS idx_tracks_artist_id ON tracks(artist_id);
+        CREATE INDEX IF NOT EXISTS idx_tracks_album_id ON tracks(album_id);
+        CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
         "
     )?;
     Ok(())
