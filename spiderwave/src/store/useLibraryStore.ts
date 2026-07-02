@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { Track } from '../shared/types/track';
 import { Album } from '../shared/types/album';
 import { Artist } from '../shared/types/artist';
@@ -17,7 +18,9 @@ interface LibraryState {
   albums: Album[];
   artists: Artist[];
   playlists: Playlist[];
+  recentHistory: Track[];
   libraryStats: LibraryStats | null;
+  dbPath: string | null;
   
   isLoading: boolean;
   isScanning: boolean;
@@ -25,7 +28,9 @@ interface LibraryState {
 
   loadLibrary: () => Promise<void>;
   rescanLibrary: (folderPath: string) => Promise<void>;
+  rescanAllFolders: () => Promise<void>;
   clearLibrary: () => void;
+  addToHistory: (trackId: string) => Promise<void>;
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -33,7 +38,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   albums: [],
   artists: [],
   playlists: [],
+  recentHistory: [],
   libraryStats: null,
+  dbPath: null,
   
   isLoading: false,
   isScanning: false,
@@ -42,13 +49,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   loadLibrary: async () => {
     set({ isLoading: true });
     try {
-      const [tracks, albums, artists, libraryStats] = await Promise.all([
+      const [tracks, albums, artists, libraryStats, recentHistory, dbPath] = await Promise.all([
         invoke<Track[]>('get_tracks'),
         invoke<Album[]>('get_albums'),
         invoke<Artist[]>('get_artists'),
-        invoke<LibraryStats>('get_library_stats')
+        invoke<LibraryStats>('get_library_stats'),
+        invoke<Track[]>('get_recent_history'),
+        invoke<string>('get_database_path'),
       ]);
-      set({ tracks, albums, artists, libraryStats, isLoading: false });
+      set({ tracks, albums, artists, libraryStats, recentHistory, dbPath, isLoading: false });
     } catch (err) {
       console.error('Failed to load library:', err);
       set({ isLoading: false });
@@ -64,7 +73,30 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } catch (err) {
       console.error('Scan failed:', err);
       set({ isScanning: false });
-      throw err; // Re-throw to handle it in the UI component
+      throw err;
+    }
+  },
+
+  rescanAllFolders: async () => {
+    set({ isScanning: true, scanProgress: 0 });
+    try {
+      await invoke('rescan_all_folders');
+      await get().loadLibrary();
+      set({ isScanning: false });
+    } catch (err) {
+      console.error('Rescan all folders failed:', err);
+      set({ isScanning: false });
+      throw err;
+    }
+  },
+
+  addToHistory: async (trackId: string) => {
+    try {
+      await invoke('add_to_history', { trackId: parseInt(trackId, 10) });
+      const recentHistory = await invoke<Track[]>('get_recent_history');
+      set({ recentHistory });
+    } catch (err) {
+      console.error('Failed to add to history:', err);
     }
   },
 
@@ -72,6 +104,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     tracks: [], 
     albums: [], 
     artists: [], 
+    recentHistory: [],
     libraryStats: null 
   }),
 }));
+
+// Listen for the 'library-updated' event emitted by the Rust startup scan.
+// When the background scan completes, reload the library automatically.
+if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+  listen('library-updated', () => {
+    useLibraryStore.getState().loadLibrary();
+  });
+}

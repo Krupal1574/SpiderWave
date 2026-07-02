@@ -2,3 +2,8 @@ pub mod tracks;
 pub mod albums;
 pub mod artists;
 pub mod stats;
+pub mod history;
+pub mod search;
+pub mod queue;
+pub mod folders;
+pub mod scan_failures;

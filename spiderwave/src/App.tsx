@@ -8,6 +8,9 @@ import { Playlists } from './pages/Playlists';
 import { Queue } from './pages/Queue';
 import { Settings } from './pages/Settings';
 
+import { AlbumDetails } from './pages/AlbumDetails';
+import { ArtistDetails } from './pages/ArtistDetails';
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -16,7 +19,9 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "library", element: <Library /> },
       { path: "albums", element: <Albums /> },
+      { path: "album/:id", element: <AlbumDetails /> },
       { path: "artists", element: <Artists /> },
+      { path: "artist/:id", element: <ArtistDetails /> },
       { path: "playlists", element: <Playlists /> },
       { path: "queue", element: <Queue /> },
       { path: "settings", element: <Settings /> },

@@ -1,16 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Track } from '../shared/types/track';
-import { Play } from 'lucide-react';
+import { Play, ListPlus, PlaySquare } from 'lucide-react';
 import { usePlayerStore } from '../store/usePlayerStore';
+import { useContextMenu } from '../shared/hooks/useContextMenu';
+import { ContextMenu } from '../shared/components/ContextMenu';
 
 interface TrackListProps {
   tracks: Track[];
 }
 
 export function TrackList({ tracks }: TrackListProps) {
-  const { currentTrack, playTrack } = usePlayerStore();
+  const { currentTrack, playContext, addToQueue, playNextInQueue } = usePlayerStore();
   const parentRef = useRef<HTMLDivElement>(null);
+  const { contextMenuState, handleContextMenu, closeContextMenu } = useContextMenu();
+  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
 
   const rowVirtualizer = useVirtualizer({
     count: tracks.length,
@@ -23,6 +27,11 @@ export function TrackList({ tracks }: TrackListProps) {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const onRightClick = (e: React.MouseEvent, track: Track) => {
+    setSelectedTrack(track);
+    handleContextMenu(e);
   };
 
   return (
@@ -54,8 +63,9 @@ export function TrackList({ tracks }: TrackListProps) {
               }}
               className={`group flex items-center grid grid-cols-[48px_1fr_1fr_1fr_80px] gap-4 px-6 border-b border-border/30 hover:bg-surface-active cursor-pointer transition-colors ${isPlaying ? 'bg-surface-active text-primary' : 'text-text-secondary'}`}
               onClick={() => {
-                playTrack(track);
+                playContext(tracks, virtualRow.index);
               }}
+              onContextMenu={(e) => onRightClick(e, track)}
             >
               <div className="text-center flex items-center justify-center relative">
                 <span className={`text-sm ${isPlaying ? 'text-primary' : 'text-text-muted'} group-hover:hidden`}>
@@ -79,6 +89,26 @@ export function TrackList({ tracks }: TrackListProps) {
           );
         })}
       </div>
+
+      {contextMenuState.isOpen && selectedTrack && (
+        <ContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          onClose={closeContextMenu}
+          items={[
+            {
+              label: 'Play Next',
+              icon: <PlaySquare className="w-4 h-4" />,
+              onClick: () => playNextInQueue(selectedTrack),
+            },
+            {
+              label: 'Add to Queue',
+              icon: <ListPlus className="w-4 h-4" />,
+              onClick: () => addToQueue(selectedTrack),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

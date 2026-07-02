@@ -12,4 +12,6 @@ export interface Track {
   bitrate?: number;
   sampleRate?: number;
   format?: string; // FLAC, MP3, WAV
+  artistId?: string;
+  albumId?: string;
 }

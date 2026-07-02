@@ -47,7 +47,7 @@ export function Sidebar() {
   return (
     <aside 
       className={cn(
-        "h-full bg-background border-r border-border flex flex-col pt-6 transition-all duration-300 relative",
+        "h-full bg-background border-r border-border flex flex-col pt-6 transition-[width] duration-300 relative",
         isSidebarCollapsed ? "w-[80px]" : "w-[260px]"
       )}
     >
@@ -100,7 +100,7 @@ export function Sidebar() {
       {/* Footer Area */}
       <div className="mt-auto flex flex-col gap-2">
         {!isSidebarCollapsed && <LibraryStatus />}
-        <div className="p-3 border-t border-border/50">
+        <div className="p-3 border-t border-border/50 relative">
           <NavItem isCollapsed={isSidebarCollapsed} to="/settings" icon={<Settings className="w-5 h-5" />} label="Settings" />
           
           {/* Version Label */}

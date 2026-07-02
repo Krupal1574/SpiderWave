@@ -14,7 +14,8 @@ pub fn insert_or_get_album(conn: &Connection, title: &str, artist_id: i64) -> Re
 
 pub fn get_all_albums(conn: &Connection) -> Result<Vec<Album>> {
     let mut stmt = conn.prepare("
-        SELECT al.id, al.title, ar.name, al.year, al.artwork_path 
+        SELECT al.id, al.title, al.artist_id, ar.name, al.year, al.artwork_path,
+               (SELECT COUNT(*) FROM tracks WHERE album_id = al.id) as track_count
         FROM albums al 
         LEFT JOIN artists ar ON al.artist_id = ar.id 
         ORDER BY al.title COLLATE NOCASE
@@ -24,9 +25,11 @@ pub fn get_all_albums(conn: &Connection) -> Result<Vec<Album>> {
         Ok(Album {
             id: row.get::<_, i64>(0)?.to_string(),
             title: row.get(1)?,
-            artist: row.get::<_, Option<String>>(2)?.unwrap_or_else(|| "Unknown Artist".to_string()),
-            year: row.get(3)?,
-            artwork_path: row.get(4)?,
+            artist_id: row.get::<_, Option<i64>>(2)?.map(|id| id.to_string()),
+            artist_name: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| "Unknown Artist".to_string()),
+            year: row.get(4)?,
+            artwork_path: row.get(5)?,
+            track_count: row.get::<_, i64>(6).unwrap_or(0) as u32,
         })
     })?;
 
