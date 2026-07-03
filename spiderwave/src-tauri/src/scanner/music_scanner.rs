@@ -114,6 +114,17 @@ pub fn scan_directory(conn: &Connection, folder_path: &str) -> Result<ScanResult
             continue;
         }
 
+        // --- Pre-flight: reject zero-byte files before invoking lofty ---
+        // No metadata parser can extract data from an empty file. Catch this
+        // early with a clean error class instead of letting lofty surface
+        // a cryptic "os error 131" (ERROR_NEGATIVE_SEEK on Windows).
+        if file_size == 0 {
+            eprintln!("[SCANNER] empty_file file={:?}", file_path);
+            let _ = record_scan_failure(conn, &path_str, Some("EMPTY"), "File is 0 bytes");
+            result.failed += 1;
+            continue;
+        }
+
         // --- Tag parsing ---
         let tagged_file = match read_from_path(file_path) {
             Ok(tf) => tf,

@@ -1,0 +1,8 @@
+[package]
+name = "rodio_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+metaflac = "0.2.8"
+rodio = { version = "0.22.2", features = ["symphonia-mp3", "symphonia-flac", "symphonia-wav", "symphonia-isomp4"] }

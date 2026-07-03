@@ -1,8 +1,8 @@
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 use std::fs::File;
-use std::io::BufReader;
-use rodio::{Decoder, OutputStream, Sink};
+
+use rodio::{Decoder, Player, DeviceSinkBuilder};
 use tauri::{AppHandle, Emitter};
 
 use crate::audio::state::AudioCommand;
@@ -32,8 +32,7 @@ pub struct SeekPayload {
 
 pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
     std::thread::spawn(move || {
-        // Initialize the audio stream. We must keep `_stream` alive on this thread.
-        let (_stream, stream_handle) = match OutputStream::try_default() {
+        let stream_handle = match DeviceSinkBuilder::open_default_sink() {
             Ok(res) => res,
             Err(e) => {
                 eprintln!("Failed to initialize audio device: {}", e);
@@ -41,7 +40,7 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
             }
         };
         
-        let mut sink = Sink::try_new(&stream_handle).unwrap();
+        let mut player = Player::connect_new(&stream_handle.mixer());
         
         let mut is_playing = false;
         let mut start_time: Option<Instant> = None;
@@ -65,7 +64,8 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
                                 }
                             };
                             
-                            let source = match Decoder::new(BufReader::new(file)) {
+                            let len = file.metadata().map(|m| m.len()).unwrap_or(0);
+                            let source = match Decoder::builder().with_data(file).with_byte_len(len).with_seekable(true).with_gapless(true).build() {
                                 Ok(s) => s,
                                 Err(e) => {
                                     eprintln!("Failed to decode audio file {}: {}", path, e);
@@ -77,11 +77,11 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
                             };
                             
                             // Stop current sink and recreate to ensure a clean queue
-                            sink.stop();
-                            sink = Sink::try_new(&stream_handle).unwrap();
+                            player.stop();
+                            player = Player::connect_new(&stream_handle.mixer());
                             
-                            sink.append(source);
-                            sink.play();
+                            player.append(source);
+                            player.play();
                             
                             is_playing = true;
                             start_time = Some(Instant::now());
@@ -93,7 +93,7 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
                         }
                         AudioCommand::Pause => {
                             if is_playing {
-                                sink.pause();
+                                player.pause();
                                 is_playing = false;
                                 if let Some(t) = start_time {
                                     accumulated_time += t.elapsed();
@@ -103,23 +103,23 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
                             }
                         }
                         AudioCommand::Resume => {
-                            if !is_playing && !sink.empty() {
-                                sink.play();
+                            if !is_playing && !player.empty() {
+                                player.play();
                                 is_playing = true;
                                 start_time = Some(Instant::now());
                                 let _ = app_handle.emit("playback-resumed", ());
                             }
                         }
                         AudioCommand::Stop => {
-                            sink.stop();
-                            sink = Sink::try_new(&stream_handle).unwrap();
+                            player.stop();
+                            player = Player::connect_new(&stream_handle.mixer());
                             is_playing = false;
                             accumulated_time = Duration::from_secs(0);
                             start_time = None;
                             let _ = app_handle.emit("playback-stopped", ());
                         }
                         AudioCommand::SetVolume(vol) => {
-                            sink.set_volume(vol);
+                            player.set_volume(vol);
                         }
                         AudioCommand::Seek(request_id, pos) => {
                             if current_request_id.as_deref() != Some(&request_id) {
@@ -131,7 +131,7 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
                                 continue;
                             }
 
-                            if is_playing || !sink.empty() {
+                            if is_playing || !player.empty() {
                                 if supports_seek == Some(false) {
                                     let _ = app_handle.emit("seek-acknowledged", SeekPayload {
                                         request_id: request_id.clone(),
@@ -141,7 +141,7 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
                                 }
 
                                 let dur = Duration::from_secs(pos);
-                                if let Err(err) = sink.try_seek(dur) {
+                                if let Err(err) = player.try_seek(dur) {
                                     println!("Track marked unseekable:\n{}\n{:?}", request_id, err);
                                     supports_seek = Some(false);
                                     let _ = app_handle.emit("seek-failed", SeekFailedPayload {
@@ -176,7 +176,7 @@ pub fn start_audio_thread(rx: Receiver<AudioCommand>, app_handle: AppHandle) {
             }
 
             // Check if track ended naturally
-            if is_playing && sink.empty() {
+            if is_playing && player.empty() {
                 is_playing = false;
                 if let Some(t) = start_time {
                     accumulated_time += t.elapsed();
